@@ -1,0 +1,19 @@
+<?xml version="1.0" ?>
+<configuration>
+    <fields>API_WELL_N,OBJECTID,FIELD_NAME,LEASE_NAME,WELL_NAME,WELL_CLASS,STATUS,WELL_TYPE,PERMIT_DAT,SPUD_DATE,COMPLETION</fields>
+    <titlefield>API_WELL_N</titlefield>
+    <links>
+    	<linkfield icon_or_text_or_img="" icon="" linkalias="" linkprefix="" linksuffix=""></linkfield>
+    </links>
+    <layername>Kansas Wells</layername>
+    <datefields>PERMIT_DAT,SPUD_DATE,COMPLETION</datefields> <!-- field in milliseconds -->
+    <zoomscale>5000</zoomscale>
+    <csvseparator>,</csvseparator>
+    <relatedateformat useutc="true">MM/DD/YYYY</relatedateformat>
+    <labels>
+    	<csvdefaultname>Related Records</csvdefaultname>
+		<exportbtnlabel>Export...</exportbtnlabel>
+		<export2csvoptionlabel>Export to CSV...</export2csvoptionlabel>
+		<export2txtoptionlabel>Export to Txt...</export2txtoptionlabel>
+    </labels>
+</configuration>

@@ -1,0 +1,12 @@
+<?xml version="1.0" ?>
+<configuration>
+    <bookmarks>
+    <bookmark name="Victoria, BC, Canada"> -13740900 6174200 -13722700 6181400 </bookmark>
+            <bookmark name="Vancouver, BC, Canada">-13734100 6307700 -13661500 6336500 </bookmark>
+    </bookmarks>
+</configuration>
+
+<!--
+    See Bookmark widget tag reference at
+    http://links.esri.com/bookmarkwidget
+-->

@@ -1,0 +1,548 @@
+<?xml version="1.0" encoding="utf-8"?>
+<viewer:BaseWidget xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   xmlns:viewer="com.esri.viewer.*"
+				   xmlns:esri="http://www.esri.com/2008/ags"
+				   layout="vertical"
+				   widgetConfigLoaded="init()">
+	<fx:Declarations>
+		<esri:SimpleFillSymbol id="sfs" color="{fillcolor.selectedColor}" alpha="{fillalpha.value}" >
+			<esri:outline>
+				<esri:SimpleLineSymbol color="{lineColor.selectedColor}" alpha="{fillalpha.value}" width="{linewidth.value}"/>
+			</esri:outline>
+		</esri:SimpleFillSymbol>
+		<esri:SimpleMarkerSymbol id="sms" style="circle" color="{PointColor.selectedColor}" size="{pointsize.value}" />
+		<esri:DrawTool showDrawTips="false" map="{map}" markerSymbol="{sms}" graphicsLayer="{graphicsLayer}" />
+		<esri:GeometryService id="geometryService"
+							  fault="geometryService_faultHandler(event)"
+							  url="http://tasks.arcgisonline.com/ArcGIS/rest/services/Geometry/GeometryServer"/>
+		<s:GlowFilter id="glowFilter"
+					  alpha="1"
+					  color="{getStyle('focusColor')}"
+					  inner="true"
+					  strength="2"/>
+		<s:ColorMatrixFilter id="cOver" matrix="[0.5,0.5,0.5,0,0,0.5,0.5,0.5,0,0,0.5,0.5,0.5,0,0,0,0,0,0.6,0]"/>
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+            import com.esri.ags.Graphic;
+            import com.esri.ags.SpatialReference;
+            import com.esri.ags.events.DrawEvent;
+            import com.esri.ags.events.GraphicEvent;
+            import com.esri.ags.events.GraphicsLayerEvent;
+            import com.esri.ags.events.MapEvent;
+            import com.esri.ags.geometry.Geometry;
+            import com.esri.ags.geometry.Polygon;
+            import com.esri.ags.layers.GraphicsLayer;
+            import com.esri.ags.layers.Layer;
+            import com.esri.ags.symbols.Symbol;
+            import com.esri.ags.tasks.GeometryService;
+            import com.esri.ags.tasks.GeometryServiceSingleton;
+            import com.esri.ags.tasks.supportClasses.BufferParameters;
+            import com.esri.ags.tools.DrawTool;
+            import com.esri.viewer.components.toc.utils.MapUtil;
+            
+            import flash.text.engine.FontWeight;
+            
+            import mx.collections.ArrayCollection;
+            import mx.controls.Alert;
+            import mx.core.FlexGlobals;
+            import mx.rpc.AsyncResponder;
+            import mx.rpc.Fault;
+            import mx.rpc.events.FaultEvent;
+			
+			[Bindable]
+			private var graphicsLayerBuffer:GraphicsLayer;
+			
+			[Bindable]
+			private var msgVisible:Boolean = false;
+			
+			private var geomArr:Array;
+			
+			[Bindable]
+			private var graphicsLayer:GraphicsLayer;
+			
+			[Bindable]
+			private var drawGraphicsLayer:GraphicsLayer;
+			
+			private var sReff:SpatialReference;
+			private var configBufferUnits:Array;
+			
+			
+			[Bindable]
+			private var clearLabel:String;
+			
+			private var selectedDrawingIcon:Image;
+			
+			private var drawSymbol:Symbol;
+			
+			[Bindable]
+			private var eDrawEnabled:Boolean = false;
+			
+			//Labels
+			[Bindable]
+			private var applyBufferLabel:String;
+			[Bindable]
+			private var distanceInputTooltip:String;
+			[Bindable]
+			private var mainInstructions:String;
+			[Bindable]
+			private var pointLabel:String;
+			[Bindable]
+			private var bufferProperties:String;
+			[Bindable]
+			private var pointColor:String;
+			[Bindable]
+			private var pointSize:String;
+			[Bindable]
+			private var fillColor:String;
+			[Bindable]
+			private var opacity:String;
+			[Bindable]
+			private var outlineColor:String;
+			[Bindable]
+			private var outlineWidth:String;
+			[Bindable]
+			private var dissolveBuffers:String;
+			[Bindable]
+			private var dissolveTooltip:String;
+			[Bindable]
+			private var unitPrompt:String;
+			[Bindable]
+			private var drawGraLabel:String;
+			[Bindable]
+			private var applyBufferAltLabel:String;
+            
+            //Build Constants
+            protected const VERSION:String = "3.6";
+            protected const BUILDDATE:String = "12/18/2013";
+            
+            //Resources
+            [Embed(source="widgets/BufferDistance/assets/images/i_about.png")]
+            private var iconClass:Class;
+			
+			private function init():void
+			{
+				if(configXML)
+				{
+					if (GeometryServiceSingleton.instance.url) // using GeometryServiceSingleton
+					{
+						geometryService.url = GeometryServiceSingleton.instance.url;
+						geometryService.token = GeometryServiceSingleton.instance.token;
+						geometryService.proxyURL = GeometryServiceSingleton.instance.proxyURL;
+					}
+					pointLabel = configXML.labels.pointlabel || "Draw Point(s)";
+					clearLabel = configXML.labels.clearlabel || "Clear";
+					applyBufferLabel = configXML.labels.applybufferlabel || "Apply buffer";
+					distanceInputTooltip = configXML.labels.distanceinputtooltip || "Add multiple rings to buffer by comma separating values";
+					mainInstructions = configXML.labels.maininstructions || "Add points to the map";
+					bufferProperties = configXML.labels.bufferproperties || "Buffer Properties:";
+					pointColor = configXML.labels.pointcolor || "Point Color:";
+					pointSize = configXML.labels.pointsize || "Point Size:";
+					fillColor = configXML.labels.fillcolor || "Fill Color:";
+					opacity = configXML.labels.opacity || "Opacity:";
+					outlineColor = configXML.labels.outlinecolor || "Outline Color:";
+					outlineWidth = configXML.labels.outlinewidth || "Outline Width:";
+					dissolveBuffers = configXML.labels.dissolvebuffers || "Dissolve";
+					dissolveTooltip = configXML.labels.dissolvetooltip || "Results are unioned into a single (possibly multipart) polygon";
+					unitPrompt = configXML.labels.unitprompt || "Choose distance unit";
+					drawGraLabel = configXML.labels.existingdrawgraphicslabel || "Use Existing Draw Widget Graphics";
+					applyBufferAltLabel = configXML.labels.applybufferaltlabel || "Add point and choose distance unit first";
+					
+					eDrawEnabled = configXML.enabledrawgraphicbutton && configXML.enabledrawgraphicbutton == "true";
+					
+					sReff = new SpatialReference(configXML.spatialReference);
+					configBufferUnits = [];
+					var bufferUnitsList:XMLList = configXML..bufferunit;
+					for (var b:int = 0; b < bufferUnitsList.length(); b++)
+					{
+						var buffUnitName:String = bufferUnitsList[b].name;
+						var buffUnitLabel:String = bufferUnitsList[b].label;
+						var bufferUnit:Object =
+						{
+							name: buffUnitName,
+							label: buffUnitLabel
+						};
+						configBufferUnits.push(bufferUnit);
+					}
+					cboBufferUnit.dataProvider = new ArrayCollection(configBufferUnits);
+				}
+				
+				if(eDrawEnabled){
+					eDrawBtn.filters = [cOver];
+					eDrawBtn.buttonMode = eDrawBtn.useHandCursor = eDrawBtn.enabled = false;
+					map.addEventListener(MapEvent.LAYER_ADD, checkForGL);					
+					MapUtil.forEachMapLayer(map, function(layer:Layer):void
+					{
+						if(layer.name.toLowerCase() == "draw features"){
+							drawGraphicsLayer = layer as GraphicsLayer;
+							drawGraphicsLayer.addEventListener(GraphicEvent.GRAPHIC_ADD, checkDrawNumGras);
+							drawGraphicsLayer.addEventListener(GraphicEvent.GRAPHIC_REMOVE, checkDrawNumGras);
+							drawGraphicsLayer.addEventListener(GraphicsLayerEvent.GRAPHICS_CLEAR, checkDrawNumGras);
+						}
+					});
+				}
+				
+				graphicsLayer = new GraphicsLayer();
+				graphicsLayer.name = "Draw Results";
+				graphicsLayer.symbol = sms;
+				map.addLayer(graphicsLayer);
+				graphicsLayer.addEventListener(GraphicEvent.GRAPHIC_ADD, checkPntNumGras);
+				graphicsLayer.addEventListener(GraphicEvent.GRAPHIC_REMOVE, checkPntNumGras);
+				graphicsLayer.addEventListener(GraphicsLayerEvent.GRAPHICS_CLEAR, checkPntNumGras);
+				
+				graphicsLayerBuffer = new GraphicsLayer();
+				graphicsLayerBuffer.name = "Buffer Results";
+				map.addLayer(graphicsLayerBuffer);
+				graphicsLayerBuffer.addEventListener(GraphicEvent.GRAPHIC_ADD, checkBufferNumGras);
+				graphicsLayerBuffer.addEventListener(GraphicEvent.GRAPHIC_REMOVE, checkBufferNumGras);
+				graphicsLayerBuffer.addEventListener(GraphicsLayerEvent.GRAPHICS_CLEAR, checkBufferNumGras);
+				
+				ClearBufferBtn.filters = [cOver];
+				ClearBufferBtn.buttonMode = ClearBufferBtn.useHandCursor = ClearBufferBtn.enabled = false;
+				
+				ApplyBufferBtn.filters = [cOver];
+				ApplyBufferBtn.buttonMode = ApplyBufferBtn.useHandCursor = ApplyBufferBtn.enabled = false;
+				ApplyBufferBtn.toolTip = applyBufferAltLabel;
+                wTemplate.header.addEventListener(MouseEvent.CLICK, DisplayVersion);
+			}
+			
+			private function checkDrawNumGras(event:Event):void
+			{
+				clearMessage();
+				if(drawGraphicsLayer){
+					eDrawBtn.filters = (drawGraphicsLayer.numGraphics > 0 && cboBufferUnit.selectedIndex != -1)?[]:[cOver];
+					eDrawBtn.buttonMode = eDrawBtn.useHandCursor = eDrawBtn.enabled = (drawGraphicsLayer.numGraphics > 0 && cboBufferUnit.selectedIndex != -1);
+				}
+			}
+			
+			private function checkBufferNumGras(event:Event):void
+			{
+				clearMessage();
+				ClearBufferBtn.filters = (graphicsLayerBuffer.numGraphics > 0 && cboBufferUnit.selectedIndex != -1)?[]:[cOver]
+				ClearBufferBtn.buttonMode = ClearBufferBtn.useHandCursor = ClearBufferBtn.enabled = (graphicsLayerBuffer.numGraphics > 0);
+			}
+			
+			private function checkPntNumGras(event:Event):void
+			{
+				clearMessage();
+				ApplyBufferBtn.filters = (graphicsLayer.numGraphics > 0 && cboBufferUnit.selectedIndex != -1)?[]:[cOver];
+				ApplyBufferBtn.buttonMode = ApplyBufferBtn.enabled = ApplyBufferBtn.useHandCursor = (graphicsLayer.numGraphics > 0 && cboBufferUnit.selectedIndex != -1);
+				ApplyBufferBtn.toolTip = (graphicsLayer.numGraphics > 0 && cboBufferUnit.selectedIndex != -1)?applyBufferLabel:applyBufferAltLabel;
+			}
+			
+			private function checkForGL(evt:Event):void
+			{
+				MapUtil.forEachMapLayer(map, function(layer:Layer):void
+				{
+					if(layer.name.toLowerCase() == "draw features"){
+						drawGraphicsLayer = layer as GraphicsLayer;
+						drawGraphicsLayer.addEventListener(GraphicEvent.GRAPHIC_ADD, checkDrawNumGras);
+						drawGraphicsLayer.addEventListener(GraphicEvent.GRAPHIC_REMOVE, checkDrawNumGras);
+						drawGraphicsLayer.addEventListener(GraphicsLayerEvent.GRAPHICS_CLEAR, checkDrawNumGras);
+					}
+				});
+			}
+			
+			private function activateDrawTool(event:MouseEvent):void
+			{
+				addSharedData("Deactivate_DrawTool", null); // to be able to deactivate drawTool on other widgets
+				
+				// apply glow
+				selectedDrawingIcon = Image(event.currentTarget);
+				clearSelectionFilter();
+				selectedDrawingIcon.filters = [ glowFilter ];
+				
+				var status:String;
+				var value:String = selectedDrawingIcon.name;
+				switch (value)
+				{
+					case DrawTool.MAPPOINT:
+					{
+						status = pointLabel;
+						drawSymbol = sms;
+						break;
+					}
+				}
+				setMapAction(value, status, drawSymbol, DrawEnd, null, false, true);
+			}
+			
+			private function getDrawGra():void
+			{
+				if(drawGraphicsLayer)
+				{
+					if(drawGraphicsLayer.graphicProvider.length > 0)
+					{
+						var gra:Graphic;
+						var geom:Geometry;
+						geomArr = [];
+						for each (gra in drawGraphicsLayer.graphicProvider)
+						{
+							 geom = gra.geometry;
+							 if(geom.type == Geometry.MAPPOINT)
+							 {
+								 geomArr.push(geom);
+							 }
+						}
+						if(geomArr.length > 0){
+							var buffUnit:Number = GeometryService[configBufferUnits[cboBufferUnit.selectedIndex].name];
+							var distArr:Array = textInputBuffer.text.split(",");
+							bufferGeometries(geomArr,sReff,distArr,buffUnit);
+						}else{
+							showMessage("There are no point graphics availible",false,true);
+						}
+						
+					} else if(drawGraphicsLayer.graphicProvider.length == 0){
+						showMessage("There are no graphics availible",false,true);
+					}
+				} else {
+					showMessage("There are no graphics availible",false,true);
+				}
+			}
+			
+			private function geometryService_faultHandler(event:FaultEvent):void
+			{
+				Alert.show(event.fault.toString(), wTemplate.widgetTitle);
+			}
+			
+			private function applyBuffer():void
+			{
+				var graLayAC:ArrayCollection = graphicsLayer.graphicProvider as ArrayCollection;
+				if (graLayAC.length > 0) 
+				{
+					geomArr = [];
+					for each (var graphic:Graphic in graphicsLayer.graphicProvider)
+					{
+						geomArr.push(graphic.geometry);
+					}
+					var buffUnit:Number = GeometryService[configBufferUnits[cboBufferUnit.selectedIndex].name];
+					var distArr:Array = textInputBuffer.text.split(",");
+					bufferGeometries(geomArr,sReff,distArr,buffUnit);
+				} else {
+					showMessage("There is no result to buffer, please make a graphical or text search first.",false, true);
+				}
+			}
+			
+			private function bufferGeometries(geomArr:Array, sr:SpatialReference, dist:Array, unit:Number):void
+			{
+				if (geomArr)
+				{
+					showMessage("Buffering...",true);
+					var bufferParameters:BufferParameters = new BufferParameters();
+					var resultEvent:Polygon = new Polygon;
+					bufferParameters.geometries = geomArr;
+					bufferParameters.bufferSpatialReference = sr;
+					bufferParameters.unit = unit;
+					bufferParameters.distances = dist;
+					bufferParameters.unionResults = dischk.selected;
+                    bufferParameters.outSpatialReference = map.spatialReference;
+					geometryService.buffer(bufferParameters,new AsyncResponder(bufferCompleteHandler,bufferFault));
+					
+					function bufferCompleteHandler(event:Array, token:Object):void
+					{
+						for each(resultEvent in event)
+						{
+							try
+							{
+								var graphic:Graphic = new Graphic();
+								graphic.geometry = resultEvent;
+								graphic.symbol = sfs;
+								var attribs:Object =
+								{
+									distance: textInputBuffer.text,
+									unit: configBufferUnits[cboBufferUnit.selectedIndex].name
+								}
+								graphic.attributes = attribs;
+								graphicsLayerBuffer.add(graphic);
+								ClearBufferBtn.filters = (graphicsLayerBuffer.numGraphics > 0 && cboBufferUnit.selectedIndex != -1)?[]:[cOver]
+								ClearBufferBtn.buttonMode = ClearBufferBtn.useHandCursor = (graphicsLayerBuffer.numGraphics > 0);
+								clearMessage();
+							}
+							catch (error:Error)
+							{
+								showMessage(error.message, false, true);
+							}
+						}						
+					}
+                    
+                    function bufferFault(event:Fault, token:Object):void
+                    {
+                        showMessage(event.message, false, true);
+                    }
+				}
+			}
+            
+            
+			
+			private function DrawEnd(event:DrawEvent):void
+			{
+				selectedDrawingIcon = null;
+				clearSelectionFilter();
+				event.target.deactivate();
+				var geom:Geometry = event.graphic.geometry;
+				var gra:Graphic = new Graphic(geom, sms);
+				graphicsLayer.add(gra);
+			}
+			
+			private function clearBuffer():void
+			{
+				graphicsLayerBuffer.clear();
+			}
+			
+			private function showMessage(msg:String, swfVisible:Boolean, error:Boolean = false):void
+			{
+				if (error){
+					txtMessage.setStyle("fontColor", 0xff0000);
+					txtMessage.setStyle("fontWieght", FontWeight.BOLD);
+					swfMessage.source = "widgets/BufferDistance/assets/images/error.png";
+					swfMessage.visible = error;
+				}else{
+					txtMessage.setStyle("fontColor", FlexGlobals.topLevelApplication.getStyle("accentColor"));
+					txtMessage.setStyle("fontWieght", FontWeight.NORMAL);
+					swfMessage.source = "assets/images/loader.swf";
+					swfMessage.visible = swfVisible;
+				}
+					
+				txtMessage.text = msg;
+				msgVisible = true;
+			}
+			
+			private function clearMessage():void
+			{
+				msgVisible = false;
+			}
+			
+			//Function to clear the Points off the map
+			private function clear(): void
+			{
+				graphicsLayer.clear();
+			}
+			
+			private function iconRollOverHandler(event:MouseEvent):void
+			{
+				clearSelectionFilter();
+				event.target.filters = [ glowFilter ];
+			}
+			
+			private function iconRollOutHandler(event:MouseEvent):void
+			{
+				clearSelectionFilter();
+			}
+			
+			private function clearSelectionFilter():void
+			{
+				for (var i:int = 0; i < imageGroup.numChildren; i++)
+				{
+					if (imageGroup.getChildAt(i).filters && imageGroup.getChildAt(i).filters.length > 0)
+					{
+						if (!(selectedDrawingIcon && imageGroup.getChildAt(i) === selectedDrawingIcon))
+						{
+							imageGroup.getChildAt(i).filters = [];
+						}
+					}
+				}
+			}
+
+            private function DisplayVersion(evt:MouseEvent):void
+            {
+                if(evt.altKey){
+                    Alert.show("Point Buffer Widget Version: " + VERSION + "\nBuild Date: " + BUILDDATE,
+                        wTemplate.widgetTitle, 4, null, null, iconClass);
+                }
+            }
+		]]>
+	</fx:Script>
+	<viewer:WidgetTemplate id="wTemplate" width="400" height="310">
+		<s:Scroller width="100%" height="100%">
+			<s:VGroup width="100%" gap="6">
+				<s:HGroup id="boxMessage"
+						  width="100%"
+						  includeInLayout="{msgVisible}"
+						  visible="{msgVisible}" verticalAlign="middle" horizontalAlign="center">
+					<mx:Image id="swfMessage"
+							  source="assets/images/loader.swf"
+							  visible="false"/>
+					<s:Label id="txtMessage"
+							 width="90%"
+							 text=""/>
+				</s:HGroup>
+				<s:Label text="{mainInstructions}" paddingLeft="5"/>
+				<s:HGroup id="imageGroup" horizontalAlign="center" width="100%" verticalAlign="middle">
+					<mx:Image name="{DrawTool.MAPPOINT}"
+							  width="40" height="40"
+							  buttonMode="true"
+							  click="{activateDrawTool(event)}"
+							  rollOut="iconRollOutHandler(event)"
+							  rollOver="iconRollOverHandler(event)"
+							  source="widgets/BufferDistance/assets/images/i_draw_point.png"
+							  toolTip="{pointLabel}"
+							  useHandCursor="true"/>
+					<s:Label text="{pointColor}" />
+					<mx:ColorPicker id="PointColor" selectedColor="0x01b9fd"/>
+					<mx:Label text="{pointSize}"/>
+					<mx:NumericStepper id="pointsize"
+									   maximum="30"
+									   minimum="0.5"
+									   value="12" width="50"/>
+				</s:HGroup>
+				<s:HGroup width="100%"
+						  horizontalAlign="right"
+						  paddingRight="10"
+						  paddingTop="2">
+					<s:Label buttonMode="true"
+							 click="clear()"
+							 fontWeight="bold"
+							 text="{clearLabel}"
+							 textDecoration="underline"/>
+				</s:HGroup>
+				<s:Label text="{bufferProperties}" width="100%" paddingLeft="5"/>
+				<s:HGroup width="100%" height="29" horizontalAlign="center" verticalAlign="middle">
+					<s:TextInput id="textInputBuffer" text="50" width="100" toolTip="{distanceInputTooltip}" />
+					<s:DropDownList id="cboBufferUnit" x="142" width="175" prompt="{unitPrompt}" change="{checkPntNumGras(null);checkDrawNumGras(null);checkPntNumGras(null);clearMessage();}"/>
+				</s:HGroup>
+				<s:HGroup width="100%" horizontalAlign="center" verticalAlign="bottom">
+					<s:Label text="{fillColor}" />
+					<mx:ColorPicker id="fillcolor" selectedColor="0x01b9fd" />
+					<s:VGroup horizontalAlign="center" gap="0">
+						<mx:Label text="{opacity}"/>
+						<mx:NumericStepper id="fillalpha"
+										   maximum="1"
+										   minimum="0"
+										   stepSize="0.1"
+										   value="0.5" width="50"/>
+					</s:VGroup>
+					<s:Label text="{outlineColor}" width="84" />
+					<mx:ColorPicker id="lineColor" selectedColor="0x01b9fd"/>
+					<s:VGroup horizontalAlign="center" gap="0">
+						<mx:Label text="{outlineWidth}"/>
+						<mx:NumericStepper id="linewidth"
+										   maximum="5"
+										   minimum="0.1"
+										   stepSize="0.1"
+										   value="1" width="50"/>
+					</s:VGroup>
+				</s:HGroup>
+				<s:HGroup width="100%" horizontalAlign="center" verticalAlign="middle">
+					<s:CheckBox id="dischk" label="Dissolve" toolTip="{dissolveTooltip}" />
+					<mx:Image id="ApplyBufferBtn"
+							  width="40" height="40"
+							  click="applyBuffer()"
+							  source="widgets/BufferDistance/assets/images/i_buffer.png"/>
+					<mx:Image id="eDrawBtn"
+							  width="40" height="40" 
+							  click="getDrawGra()"
+							  source= "widgets/BufferDistance/assets/images/i_draw_draw.png"
+							  toolTip="{drawGraLabel}" 
+							  visible="{eDrawEnabled}"
+							  includeInLayout="{eDrawEnabled}"/>
+					<mx:Image id="ClearBufferBtn"
+							  width="40" height="40"
+							  click="clearBuffer()"
+							  source="assets/images/i_clear.png"
+							  toolTip="{clearLabel}"/>
+				</s:HGroup>
+			</s:VGroup>
+		</s:Scroller>
+	</viewer:WidgetTemplate>
+</viewer:BaseWidget>

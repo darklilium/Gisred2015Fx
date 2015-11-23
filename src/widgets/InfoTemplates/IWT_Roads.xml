@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<configuration>
+    <fields>Surf_Type,Name,Classification,County_Maintained,Road_Id,Plan_Hyper,Deed_Hyper</fields>
+    <titlefield>Name</titlefield>
+    <layername>County Roads</layername>
+    <links>
+    	<linkfield icon_or_text_or_img="icon" icon="" linkalias="" linkprefix="" linksuffix="">Plan_Hyper</linkfield>
+    </links>
+    <datefields></datefields> <!-- field in milliseconds -->
+    <zoomscale>150000</zoomscale>
+</configuration>

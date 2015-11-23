@@ -1,0 +1,30 @@
+<?xml version="1.0" ?>
+<configuration>
+	<fields>URL,OBJECTID,ONLINE,DESCRIPTION,LAST_UPDATED</fields>
+    <titlefield>DESCRIPTION</titlefield>
+    <links>
+    	<linkfield icon_or_text_or_img="img" icon="" 
+    			   linkalias="" linkprefix="" linksuffix="">URL</linkfield>
+    	<linkfield icon_or_text_or_img="text" icon="" 
+    			   linkalias="Show Image..." linkprefix="" linksuffix="">URL</linkfield>
+    	<linkfield icon_or_text_or_img="icon" icon="assets/images/i_lego.png" 
+    			   linkalias="Show Image..." linkprefix="" linksuffix="">ONLINE</linkfield>
+    	<linkfield icon_or_text_or_img="icon" icon="assets/images/i_camera.png" 
+    			   linkalias="Show Image..." linkprefix="" linksuffix="">URL</linkfield>
+    	<linkfield icon_or_text_or_img="icon" icon="assets/images/i_clock.png" 
+    			   linkalias="Show Image..." linkprefix="" linksuffix="">ONLINE</linkfield>
+    	<linkfield icon_or_text_or_img="icon" icon="assets/images/i_about.png" 
+    			   linkalias="Show Image..." linkprefix="" linksuffix="">URL</linkfield>
+    </links>
+    <multiimagefield linkprefix="" linksuffix="" nexttooltip="Next" prevtooltip="Prev"></multiimagefield>
+    <layername>Traffic Cameras</layername>
+    <datefields dateformat="DD/MM/YYYY" useutc="true">LAST_UPDATED</datefields>
+    <zoomscale>5000</zoomscale>
+    <csvseparator>,</csvseparator>
+    <labels>
+    	<csvdefaultname>Related Records</csvdefaultname>
+		<exportbtnlabel>Export...</exportbtnlabel>
+		<export2csvoptionlabel>Export to CSV...</export2csvoptionlabel>
+		<export2txtoptionlabel>Export to Txt...</export2txtoptionlabel>
+    </labels>
+</configuration>

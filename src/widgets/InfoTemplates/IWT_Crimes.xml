@@ -1,0 +1,18 @@
+<?xml version="1.0" ?>
+<configuration>
+	<fields>URL,PROJECT_NAME,DATE_REPT,GEN_CRIME,OBJECTID,Lat,Lon</fields>
+    <titlefield>PROJECT_NAME</titlefield>
+    <multiimagefield linkprefix="http://gislap134/Assets/Images/" linksuffix=""
+    	 nexttooltip="Next" prevtooltip="Prev">URL</multiimagefield>
+    <links/>
+    <layername>MultiTest</layername>
+    <datefields>DATE_REPT</datefields>
+    <zoomscale>5000</zoomscale>
+    <csvseparator>,</csvseparator>
+    <labels>
+    	<csvdefaultname>Related Records</csvdefaultname>
+		<exportbtnlabel>Export...</exportbtnlabel>
+		<export2csvoptionlabel>Export to CSV...</export2csvoptionlabel>
+		<export2txtoptionlabel>Export to Txt...</export2txtoptionlabel>
+    </labels>
+</configuration>

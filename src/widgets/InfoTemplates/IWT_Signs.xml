@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<configuration>
+    <fields>Road_Name,Road_ID,Type</fields>
+    <titlefield>Road_Name</titlefield>
+    <layername>County Signs</layername>
+    <links>
+    	<linkfield icon_or_text_or_img="" icon="" linkalias="" linkprefix="" linksuffix=""></linkfield>
+    </links>
+    <datefields></datefields> <!-- field in milliseconds -->
+    <zoomscale>150000</zoomscale>
+</configuration>

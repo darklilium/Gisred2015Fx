@@ -1,0 +1,18 @@
+<?xml version="1.0" ?>
+<configuration>
+	<fields>URL,NAME</fields>
+    <titlefield>NAME</titlefield>
+    <links></links>
+    <multiimagefield linkprefix="http://gis.calhouncounty.org/FlexViewer2.4/assets/images/" linksuffix="" nexttooltip="Next" prevtooltip="Prev">URL</multiimagefield>
+    <layername>Louisville Places</layername>
+    <datefields></datefields>
+    <zoomscale>5000</zoomscale>
+    <csvseparator>,</csvseparator>
+    <maxinfowindowwidth>350</maxinfowindowwidth>
+    <labels>
+    	<csvdefaultname>Related Records</csvdefaultname>
+		<exportbtnlabel>Export...</exportbtnlabel>
+		<export2csvoptionlabel>Export to CSV...</export2csvoptionlabel>
+		<export2txtoptionlabel>Export to Txt...</export2txtoptionlabel>
+    </labels>
+</configuration>

@@ -1,0 +1,23 @@
+<?xml version="1.0" ?>
+<configuration label="Louisville Police Stations">
+    <layer>http://gisred.chilquinta/arcgis/rest/services/Chilquinta_006/Equipos_pto_006/MapServer/0</layer>
+    <titlefield>nombre</titlefield>
+    <orderbyfields>nombre</orderbyfields> 
+    <fields all="false">
+        <field name="nombre" alias="" order="name"/>        
+    </fields>
+    <filterfield>
+        <name></name>
+        <alias>Filtro por nombre de SSEE (Ejemplo: San Pedro )</alias>
+    </filterfield>
+    <linkfield></linkfield>
+    <refreshrate></refreshrate>
+    <zoomscale>20000</zoomscale>
+    <query>1=1</query>
+    
+</configuration>
+
+<!--
+    See Query widget tag reference at
+    http://links.esri.com/querywidget
+-->

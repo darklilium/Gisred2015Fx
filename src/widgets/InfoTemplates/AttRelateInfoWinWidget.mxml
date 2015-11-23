@@ -1,0 +1,608 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+////////////////////////////////////////////////////////////////////////////////
+//
+// Delevoped by Robert Scheitlin
+//
+////////////////////////////////////////////////////////////////////////////////
+-->
+<viewer:BaseWidget xmlns:fx="http://ns.adobe.com/mxml/2009"
+				   xmlns:s="library://ns.adobe.com/flex/spark"
+				   xmlns:viewer="com.esri.viewer.*"
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   xmlns:esri="http://www.esri.com/2008/ags"
+				   xmlns:InfoTemplates="widgets.InfoTemplates.*"
+				   implements="com.esri.viewer.IInfowindowTemplate"
+				   creationComplete="init()"
+				   widgetConfigLoaded="initConfig()" >
+	
+	<fx:Script>
+		<![CDATA[
+			import com.esri.ags.FeatureSet;
+			import com.esri.ags.Graphic;
+			import com.esri.ags.geometry.MapPoint;
+			import com.esri.ags.layers.FeatureLayer;
+			import com.esri.ags.layers.Layer;
+			import com.esri.ags.layers.supportClasses.AttachmentInfo;
+			import com.esri.ags.layers.supportClasses.CodedValue;
+			import com.esri.ags.layers.supportClasses.CodedValueDomain;
+			import com.esri.ags.layers.supportClasses.Field;
+			import com.esri.ags.layers.supportClasses.IDomain;
+			import com.esri.ags.layers.supportClasses.LayerDetails;
+			import com.esri.ags.layers.supportClasses.Relationship;
+			import com.esri.ags.layers.supportClasses.TableDetails;
+			
+			import mx.binding.utils.ChangeWatcher;
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			import mx.formatters.DateFormatter;
+			import mx.managers.PopUpManager;
+			import mx.rpc.AsyncResponder;
+			import mx.rpc.Fault;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.styles.CSSStyleDeclaration;
+			import mx.styles.IStyleManager2;
+			import mx.utils.ObjectUtil;
+			
+			import spark.components.Button;
+			import spark.components.CheckBox;
+			
+			[Bindable] private var contentList:ArrayCollection;
+			private var fields:Array;
+			private var datefields:Array;
+			private var layerLinks:Array;
+			private var multiImgField:String;
+			private var multiImgPre:String;
+			private var multiImgSuf:String;
+			private var multiImgNext:String;
+			private var multiImgPrev:String;
+			private var isIconOrTextOrImg:String;
+			private var bLinkField:Boolean;
+			private var linkValue:String;
+			private var titleField:String;
+			private var dateFormat:String;
+			private var useUTC:Boolean;
+			private var ruseUTC:Boolean;
+			private var rdateFormat:String;
+			private var zoomScale:Number = 5000;
+			private var csvSep:String;
+			private var expBtnLbl:String;
+			private var exp2csvOptLbl:String;
+			private var exp2txtOptLbl:String;
+			private var _csvName:String;
+			
+			private var floatdg:FloatDG;
+			
+			private var aWindow:AttachmentWindow;
+			
+			private var rWindow:RelatesWindow;
+			
+			[Embed(source="widgets/InfoTemplates/assets/images/i_attachment2.png")]
+			private var attachClass:Class;
+			
+			[Embed(source="widgets/InfoTemplates/assets/images/i_relate.png")]
+			private var relateClass:Class;
+			
+			[Embed(source="assets/images/w_close.png")]
+			private var wCloseBtnClass:Class;
+			
+			private var iArray:Array;
+			
+			private var iCurrIndx:int;
+			
+			public var selRelateURL:String;
+			
+			//the layer name from the config xml file for the feature layer
+			private var layername:String;
+			
+			private var dateFormatter:DateFormatter = new DateFormatter();
+			
+			private function init():void
+			{
+				this.addEventListener(FlexEvent.DATA_CHANGE, setInfoParameters);
+				infoClass = AttRelateInfoWinWidget;
+				var topLevelStyleManager:IStyleManager2 = FlexGlobals.topLevelApplication.styleManager;
+				var cssStyleDeclarationInfoWindow:CSSStyleDeclaration = topLevelStyleManager.getStyleDeclaration("com.esri.ags.components.supportClasses.InfoWindowCloseButton");
+				cssStyleDeclarationInfoWindow.setStyle("upSkin", wCloseBtnClass);
+				cssStyleDeclarationInfoWindow.setStyle("downSkin", wCloseBtnClass);
+				cssStyleDeclarationInfoWindow.setStyle("overSkin", wCloseBtnClass);
+				topLevelStyleManager.setStyleDeclaration("com.esri.ags.components.supportClasses.InfoWindowCloseButton", cssStyleDeclarationInfoWindow, false);
+				setInfoParameters(null);
+				ChangeWatcher.watch(map.infoWindow, "content", infoWindowContentChangeHandler);
+			}
+			
+			private function infoWindowContentChangeHandler(event:Event):void
+			{
+				map.infoWindow.label = "";
+			}
+			
+			private function initConfig():void
+			{
+				if (configXML){
+					titleField = configXML.titlefield;
+					var fds:String = configXML.fields;
+					var dfd:String = configXML.datefields;
+					
+					if(infoCanvas && Number(configXML.maxinfowindowwidth[0]) > 0)
+						infoCanvas.maxWidth = Number(configXML.maxinfowindowwidth[0]);
+					
+					exp2csvOptLbl = configXML.labels.export2csvbuttonlabel || "Export to CSV...";
+					exp2txtOptLbl = configXML.labels.export2txtbuttonlabel || "Export to Txt...";
+					expBtnLbl = configXML.labels.exportbtnlabel || "Export...";
+					_csvName = configXML.labels.csvdefaultname || "Selected Records";
+					csvSep = configXML.csvseparator || ",";
+					
+					//get the layer name from the xml file
+					layername = configXML.layername;
+					
+					if (fds)
+						fields = fds.split(",");
+					
+					if (dfd){
+						datefields = dfd.split(",");
+						dateFormat = configXML.datefields.@dateformat;
+						useUTC = configXML.datefields.@useutc && configXML.datefields.@useutc == "true";
+					}
+					
+					rdateFormat = configXML.relatedateformat || "DD/MM/YYYY";
+					ruseUTC = configXML.relatedateformat.@useutc && configXML.relatedateformat.@useutc == "true";
+					
+					layerLinks = [];
+					var linkList:XMLList = configXML..linkfield;
+					for (var i:Number = 0; i < linkList.length(); i++){
+						var isIconOrTextOrImg:String = linkList[i].@icon_or_text_or_img;
+						var Icon:String = linkList[i].@icon;
+						var linkAlias:String = linkList[i].@linkalias;
+						var linkPrefix:String = linkList[i].@linkprefix;
+						var linkSuffix:String = linkList[i].@linksuffix;
+						var linkField:String = linkList[i];
+						var llink:Object = 
+						{
+							type: isIconOrTextOrImg,
+							icon: Icon,
+							lnkalias: linkAlias,
+							lnkprefix: linkPrefix,
+							lnksuffix: linkSuffix,
+							lnkfield: linkField
+						}
+						layerLinks.push(llink);
+					}
+					
+					multiImgField = configXML.multiimagefield;
+					multiImgPre = configXML.multiimagefield.@linkprefix;
+					multiImgSuf = configXML.multiimagefield.@linksuffix;
+					multiImgNext = configXML.multiimagefield.@nexttooltip;
+					multiImgPrev = configXML.multiimagefield.@prevtooltip;
+					if(Number(configXML.zoomscale) > 0)
+						zoomScale = Number(configXML.zoomscale);
+				}
+				setInfoParameters(null);
+			}
+			
+			public function set infoConfig(value:XML):void
+			{
+				configXML = value;
+				initConfig();
+			}
+			
+			private function setInfoParameters(event:FlexEvent):void
+			{
+				if (data && fields){
+					try{
+						contentList = new ArrayCollection();
+						if(!data.hasOwnProperty(titleField))
+							return;
+						var title:String = data[titleField];
+						
+						var flyToSearch:FeatureLayer;
+						
+						if (layername){
+							//find the matching feature layer
+							for each (var lyrCurrent:Layer in map.layers){
+								//stop on the matching layer
+								if (lyrCurrent.name == layername){
+									flyToSearch = lyrCurrent as FeatureLayer;
+									//Check to see if the featurelayer has relationships
+									if (flyToSearch.layerDetails.relationships)
+										buttons.showRelateBtn(true);
+									//Check to see if the featurelayer has attachment capablity
+									if (flyToSearch.layerDetails.hasAttachments)
+										buttons.showAttachBtn(true);
+								}
+							}
+							//Create list of field aliases from the layerDetails
+							var fldDat:Object = new Object();
+							for each (var fldDtls:Object in flyToSearch.layerDetails.fields){
+								var fldn:String;
+								for each (fldn in fields){
+									if(fldDtls.name == fldn)
+										fldDat[fldn] = fldDtls.alias;
+								}
+							}
+						}
+						
+						//Clear all previous link info
+						infoImage.source = "";
+						infoImage.visible = false;
+						infoImage.includeInLayout = false;
+						linkTextGrp.visible = false;
+						linkTextGrp.includeInLayout = false;
+						var linkFound:Boolean = false;
+						linkTextGrp.removeAllElements();
+						
+						//Remove all the non default buttons
+						for(var b:int=buttons.numElements -1; b>=3; b--){
+							buttons.removeElementAt(b);
+						}
+
+						mInfoImageC.visible = false;
+						mInfoImageC.includeInLayout = false;
+						mInfoImageC.nextButtonToolTip = multiImgNext;
+						mInfoImageC.prevButtonToolTip = multiImgPrev;
+
+						for (var i:int; i < fields.length; i++){
+							var attrvalue:Object = data[fields[i]];
+							linkFound =false;
+							if (datefields && datefields.indexOf(fields[i]) != -1 && attrvalue is Number){
+								var df:Date = new Date(attrvalue);
+								if (df.milliseconds == 999){ // workaround for REST bug
+									df.milliseconds++;
+								}
+								if (useUTC){
+									df.minutes += df.timezoneOffset;
+								}
+								if (dateFormat){
+									dateFormatter.formatString = dateFormat;
+									var result:String = dateFormatter.format(df);
+									if (result){
+										attrvalue = result;
+									}else{
+										attrvalue = df.toLocaleString();
+									}
+								}else{
+									attrvalue = df.toLocaleString();
+								}
+							}else if (datefields && datefields.indexOf(fields[i]) != -1 && attrvalue is String){
+								var df2:Date = new Date(Date.parse(attrvalue));
+								if (df2.milliseconds == 999){ // workaround for REST bug
+									df2.milliseconds++;
+								}
+								if (useUTC){
+									df.minutes += df.timezoneOffset;
+								}
+								if (dateFormat){
+									dateFormatter.formatString = dateFormat;
+									var result2:String = dateFormatter.format(df2);
+									if (result2){
+										attrvalue = result2;
+									}else{
+										attrvalue = df2.toLocaleString();
+									}
+								}else{
+									attrvalue = df2.toLocaleString();
+								}
+							}
+							
+							var retVal:String = getDomainValue(fields[i],String(attrvalue),flyToSearch.layerDetails);
+							
+							if(retVal != "")
+								attrvalue = retVal;
+							
+							var item:Object =
+							{
+								//If for some reason the layer name is not provided
+								//then we will not have field aliases so we will
+								//have to use the normal field name
+								field: fldDat ? fldDat[fields[i]] : fields[i],
+								value: attrvalue
+							};
+							
+							if (multiImgField && fields[i] == multiImgField && attrvalue != null){
+								linkFound = true;
+								mInfoImageC.multiImgPre = multiImgPre;
+								mInfoImageC.multiImgSuf = multiImgSuf;
+								iArray = attrvalue.split(",");
+								mInfoImageC.iArray = iArray;
+								mInfoImageC.visible = true;
+								mInfoImageC.includeInLayout = true;
+							}
+							
+							if (layerLinks.length > 0){
+								for(var ll:int=0; ll<layerLinks.length; ll++){
+									if(layerLinks[ll].lnkfield == fields[i]){
+										if (attrvalue){
+											linkFound = true;
+											var linkPre:String = layerLinks[ll].lnkprefix;
+											var linkSuf:String = layerLinks[ll].lnksuffix;			
+											if(layerLinks[ll].type == "icon"){
+												buttons.addIconBtn(layerLinks[ll].icon,linkPre + attrvalue + linkSuf,layerLinks[ll].lnkalias);
+												buttons.getElementAt(buttons.numElements -1).addEventListener("iconBtnClicked",showLink);
+											}else if(layerLinks[ll].type == "text"){
+												var textLink:CheckBox = new CheckBox();
+												textLink.setStyle("skinClass", widgets.InfoTemplates.hyperlinkSkin);
+												textLink.label = layerLinks[ll].lnkalias != "" ? layerLinks[ll].lnkalias: linkPre + attrvalue + linkSuf;
+												textLink.addEventListener(MouseEvent.CLICK,showLink);
+												textLink.useHandCursor=true;
+												textLink.name = linkPre + attrvalue + linkSuf;
+												textLink.buttonMode=true;
+												linkTextGrp.addElement(textLink);
+												linkTextGrp.visible = true;
+												linkTextGrp.includeInLayout = true;
+											}else if(layerLinks[ll].type == "img"){
+												infoImage.source = linkPre + attrvalue + linkSuf;;
+												infoImage.toolTip = layerLinks[ll].lnkalias != "" ? layerLinks[ll].lnkalias: linkPre + attrvalue + linkSuf;;
+												infoImage.visible = true;
+												infoImage.name = linkPre + attrvalue + linkSuf;
+												infoImage.includeInLayout = true;
+											}
+										}
+									}
+								}
+							}
+							if (linkFound == false)
+								contentList.addItem(item);
+
+							map.infoWindow.label = title;
+						}
+					}
+					catch (err:Error){
+						trace(err.message);
+					}
+				}
+			}
+			
+			private var _infoClass:Class = AttRelateInfoWinWidget;
+			
+			public function set infoClass(value:Class):void
+			{
+				_infoClass = value;
+			}
+			
+			public function get infoClass():Class
+			{
+				return _infoClass;
+			}
+			
+			protected function zoom_clickHandler(event:MouseEvent):void
+			{
+				var here:MapPoint = map.toMap(new Point(map.infoWindow.anchorX, map.infoWindow.anchorY));
+				if (map.scale > zoomScale)
+					map.scale = zoomScale;
+				map.centerAt(here);
+			}
+			
+			//show link
+			private function showLink(event:Event):void
+			{
+				//event.currentTarget.name
+				navigateToURL(new URLRequest(event.currentTarget.name));
+			}
+			
+			private function queryRelate():void
+			{
+				var oid:Number;
+				if (layername){
+					//find the matching feature layer
+					var flyToSearch:FeatureLayer;
+					for each (var lyrCurrent:Layer in map.layers){
+						//stop on the matching layer
+						if (lyrCurrent.name == layername){
+							flyToSearch = lyrCurrent as FeatureLayer;
+							oid = data[flyToSearch.layerDetails.objectIdField];						
+							if (flyToSearch.layerDetails.relationships){
+								if(!rWindow){
+									rWindow = RelatesWindow(PopUpManager.createPopUp(map,RelatesWindow,true));
+									rWindow.addEventListener("closeMe", CloseRelateWindow);
+									rWindow.featureOID = oid;
+									rWindow.featureLayer = flyToSearch;
+									PopUpManager.centerPopUp(rWindow);
+								}else{
+									rWindow.featureOID = oid;
+									rWindow.featureLayer = flyToSearch;
+									PopUpManager.addPopUp(rWindow,map,true);
+									PopUpManager.centerPopUp(rWindow);
+								}
+								rWindow.dProvider = flyToSearch.layerDetails.relationships;
+							} else {
+								Alert.show("Identified feature has no relationships","No Relates",4,null,null,relateClass);
+							}
+						}
+					}
+				}
+			}
+			
+			private function CloseRelateWindow(event:Event):void
+			{
+				var dgTtitle:String;
+				var flyToSearch:FeatureLayer;
+				var oid:Number = rWindow.featureOID;
+				flyToSearch = rWindow.featureLayer;
+				selRelateURL = flyToSearch.url.substring(0,flyToSearch.url.lastIndexOf("/")) + "/" + (rWindow.selectedRelateId - 1);
+				relatesQuery.relationshipId = rWindow.selectedRelateId;
+				relatesQuery.objectIds = [oid];
+				dgTtitle = rWindow.selectedRelateName;
+				PopUpManager.removePopUp(rWindow);
+				
+				flyToSearch.queryRelatedFeatures(relatesQuery, new AsyncResponder(onResult, onFault));
+				
+				function onResult(relatedRecords:Object, token:Object = null):void
+				{
+					// get related records for the first feature
+					
+					var fset:FeatureSet = (relatedRecords[oid]);
+					if (fset is FeatureSet){
+						if(!floatdg){
+							floatdg = FloatDG(PopUpManager.createPopUp(map,FloatDG,false));
+							PopUpManager.centerPopUp(floatdg);
+						}else{
+							PopUpManager.addPopUp(floatdg,map,false);
+							PopUpManager.centerPopUp(floatdg);
+						}
+						
+						for each (var gra:Graphic in fset.features){   
+							var obj:Object = gra.attributes;
+							var fld:String;
+							var value:String;
+							for (fld in obj){
+								try{    		        	    		       
+									value = obj[fld].toString();
+								} catch (error: Error){
+									value = "";
+								}
+								if (fset.fields){
+									for each (var field:Field in fset.fields){
+										if (field.name in gra.attributes && field.name == fld){
+											if(field.type == Field.TYPE_DATE){
+												var df:Date = new Date(parseInt(value));
+												if (df.milliseconds == 999){ // workaround for REST bug
+													df.milliseconds++;
+												}
+												if (ruseUTC){
+													df.minutes += df.timezoneOffset;
+												}
+												if (rdateFormat){
+													dateFormatter.formatString = rdateFormat;
+													var result:String = dateFormatter.format(df);
+													if (result){
+														value = result;
+													}else{
+														value = df.toLocaleString();
+													}
+												}else{
+													value = df.toLocaleString();
+												}
+											}
+										}
+									}
+								}
+								obj[fld] = value;
+							}
+						}
+						floatdg.csvExportOptionLbl = exp2csvOptLbl;
+						floatdg.txtExportOptionLbl = exp2txtOptLbl;
+						floatdg.ExportButtonLbl = expBtnLbl;
+						floatdg.csvSeperator = csvSep;
+						floatdg.csvName = _csvName;
+						floatdg.dgColumns = fset.fields;
+						floatdg.dProvider = fset.attributes;
+						floatdg.dgtitle = dgTtitle;
+					}else{
+						Alert.show("Identified feature has no relates","No Relates",4,null,null,relateClass);
+					}
+				}
+			}
+			
+			private function getDomainValue(fieldName:String,code:String,featDtls:*):String
+			{ 
+				var returnValue:String = "";
+				var fld:Object;
+				var cVal:CodedValue;
+				var cDomain:CodedValueDomain;
+				for each (fld in featDtls.fields){
+					if(fld.name == fieldName){
+						cDomain = fld.domain;
+						if (cDomain){
+							for each (cVal in cDomain.codedValues){
+								if(cVal.code == code)
+									returnValue = cVal.name;
+							}
+						}
+					}
+				}
+				return returnValue;
+			}
+			
+			private function queryAttach():void
+			{
+				//send the feature to the attachment inspector if the layer has a name listed
+				if (layername){
+					//find the matching feature layer
+					var flyToSearch:FeatureLayer;
+					for each (var lyrCurrent:Layer in map.layers){
+						//stop on the matching layer
+						if (lyrCurrent.name == layername){
+							flyToSearch = lyrCurrent as FeatureLayer;
+							if (flyToSearch.layerDetails.hasAttachments){
+								buttons.attachBtnSourceChange("assets/images/loader.swf");
+								flyToSearch.queryAttachmentInfos(data[flyToSearch.layerDetails.objectIdField],new AsyncResponder(onResult, onFault));
+								
+								function onResult(attachRecords:Object, token:Object = null):void
+								{
+									buttons.attachBtnSourceChange("widgets/InfoTemplates/assets/images/i_attachment.png");
+									if (attachRecords.length > 0){
+										if(!aWindow){
+											aWindow = AttachmentWindow(PopUpManager.createPopUp(map,AttachmentWindow,false));
+											PopUpManager.centerPopUp(aWindow);
+										}else{
+											PopUpManager.addPopUp(aWindow,map,false);
+											PopUpManager.centerPopUp(aWindow);
+										}
+										aWindow.dProvider = attachRecords;
+									} else {
+										Alert.show("Identified feature has no attachments","No Attachments",4,null,null,attachClass);
+									}
+								}
+							} else {
+								Alert.show("Identified feature has no attachments","No Attachments",4,null,null,attachClass);
+							}
+						} 
+					}
+				}
+			}
+			
+			//on fault
+			private function onFault(event:Fault,data:Object):void
+			{                    
+				Alert.show(event.faultDetail.toString(), "Fault");         
+			}
+			
+			protected function attachmentInspector_faultHandler(event:FaultEvent):void
+			{
+				Alert.show(event.fault.message, "Fault");
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<esri:AttachmentInspector id="attachmentInspector" fault="attachmentInspector_faultHandler(event)"/>
+		<esri:RelationshipQuery id="relatesQuery" outFields="[*]"/>
+		<mx:DateFormatter id="iDateFormat" />
+	</fx:Declarations>
+	
+	<s:VGroup id="infoCanvas"
+			  horizontalAlign="center"
+			  minHeight="90"
+			  paddingTop="5">
+		<s:Scroller width="100%" height="100%">
+			<s:DataGroup id="dataGroup"
+						 dataProvider="{contentList}"
+						 itemRenderer="widgets.InfoTemplates.InfoContentItemRenderer">
+				<s:layout>
+					<s:VerticalLayout gap="2"
+									  horizontalAlign="contentJustify"
+									  useVirtualLayout="true"/>
+				</s:layout>
+			</s:DataGroup>
+		</s:Scroller>
+		<s:VGroup id="linkTextGrp" width="100%" visible="false" includeInLayout="false" horizontalAlign="center" />
+		<mx:Image id="infoImage"
+			  height="150"
+			  buttonMode="true"
+			  click="showLink(event)"
+			  includeInLayout="false"
+			  maxWidth="{infoCanvas.width}"
+			  useHandCursor="true"
+			  visible="false" horizontalAlign="center"/>
+		<InfoTemplates:MutiImageControl id="mInfoImageC" width="100%" visible="false" includeInLayout="false" cWidth="250"/>
+		<InfoTemplates:AttRelateInfoButtons id="buttons"
+			zoomToBtnClicked="zoom_clickHandler(event)"
+			attachmentBtnClicked="queryAttach()"
+			relateBtnClicked="queryRelate()"
+			relateBtnToolTip="Show Related"
+			attachBtnToolTip="Show Attachments"
+			zoomToBtnToolTip="Zoom here"/>
+	</s:VGroup>
+</viewer:BaseWidget>

@@ -1,0 +1,43 @@
+<?xml version="1.0" ?>
+<configuration>
+    <addfeatures>true</addfeatures>
+    <deletefeatures>true</deletefeatures>
+    <updategeometry>true</updategeometry>
+    <updateattributes>true</updateattributes>
+    <toolbarvisible>true</toolbarvisible>
+    <toolbarcutvisible>false</toolbarcutvisible>
+    <toolbarmergevisible>false</toolbarmergevisible>
+    <toolbarreshapevisible>false</toolbarreshapevisible>
+    <layersettings>
+        <layer name="Manejo Vegetacion">
+            <fields>
+                <field name="Especie" alias="Especie"/>
+                <field name="Desarrollo" alias="Desarrollo"/>
+                <field name="D_linea" alias="D_linea"/>
+                <field name="Alturatota" alias="Alturatota"/>
+                <field name="AlturaLibr" alias="AlturaLibr"/>
+                <field name="DAP" alias="DAP"/>
+                <field name="DiametroDe" alias="DiametroDe"/>
+                <field name="RectitudFu" alias="RectitudFu"/>
+                <field name="M_Actual" alias="M_Actual"/>
+                <field name="M_Propuest" alias="M_Propuest"/>
+                <field name="Ejecucion" alias="Ejecucion"/>
+                <field name="Distancia_" alias="Distancia_"/>
+                <field name="Pertenenci" alias="Pertenenci"/>
+                <field name="Pertenen_1" alias="Pertenen_1"/>
+                <field name="ConflictoI" alias="ConflictoI"/>
+                <field name="PresenciaI" alias="PresenciaI"/>
+                <field name="plantasPar" alias="plantasPar"/>
+                <field name="OBS_1" alias="OBS_1"/>
+                <field name="OBS_2" alias="OBS_2"/>
+                <field name="FOTO_1" alias="FOTO_1"/>
+                <field name="FOTO_2" alias="FOTO_2"/>
+                <field name="Actualizac" alias="Actualizac"/>
+                <field name="Hora" alias="Hora"/>
+                <field name="CRITERIOS_" alias="CRITERIOS_"/>
+                <field name="PERIODICID" alias="PERIODICID"/>
+                <field name="TEMPORADA" alias="TEMPORADA"/>
+            </fields>
+        </layer>
+    </layersettings>
+</configuration>

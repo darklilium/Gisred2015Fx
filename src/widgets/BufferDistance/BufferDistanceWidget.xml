@@ -1,0 +1,56 @@
+<?xml version="1.0" ?>
+<!--
+////////////////////////////////////////////////////////////////////////////////
+//
+// Copyright © 2008 - 2009 ESRI
+//
+// All rights reserved under the copyright laws of the United States.
+// You may freely redistribute and use this software, with or
+// without modification, provided you include the original copyright
+// and use restrictions.  See use restrictions in the file:
+// <install location>/FlexViewer/License.txt
+//
+////////////////////////////////////////////////////////////////////////////////
+-->
+<configuration>
+	<labels>
+		<pointlabel>Add Point(s)</pointlabel>
+		<clearlabel>Clear</clearlabel>
+		<applybufferlabel>Apply buffer</applybufferlabel>
+		<applybufferaltlabel>Add point and choose distance unit first</applybufferaltlabel>
+		<maininstructions>Add points to the map or use existing</maininstructions>
+		<bufferproperties>Buffer Properties:</bufferproperties>
+		<pointcolor>Point Color:</pointcolor>
+		<pointsize>Point Size:</pointsize>
+		<fillcolor>Fill Color:</fillcolor>
+		<opacity>Opacity:</opacity>
+		<outlinecolor>Outline Color:</outlinecolor>
+		<outlinewidth>Outline Width:</outlinewidth>
+		<dissolvebuffers>Dissolve</dissolvebuffers>
+		<distanceinputtooltip>Add multiple rings to buffer by comma separating values</distanceinputtooltip>
+		<dissolvetooltip>Results are unioned into a single (possibly multipart) polygon</dissolvetooltip>
+		<unitprompt>Choose distance unit</unitprompt>
+		<existingdrawgraphicslabel>Use Existing eDraw Widget Graphics</existingdrawgraphicslabel>
+	</labels>
+	<bufferunits>
+		<bufferunit>
+			<name>UNIT_FOOT</name>
+			<label>Feet</label>
+		</bufferunit>
+		<bufferunit>
+			<name>UNIT_STATUTE_MILE</name>
+			<label>Miles</label>
+		</bufferunit>
+		<bufferunit>
+			<name>UNIT_METER</name>
+			<label>Meters</label>
+		</bufferunit>		
+		<bufferunit>
+			<name>UNIT_KILOMETER</name>
+			<label>Kilometers</label>
+		</bufferunit>
+	</bufferunits>
+	<geometryservice>http://tasks.arcgisonline.com/ArcGIS/rest/services/Geometry/GeometryServer</geometryservice>
+	<spatialReference>102003</spatialReference>
+	<enabledrawgraphicbutton>true</enabledrawgraphicbutton>
+</configuration>

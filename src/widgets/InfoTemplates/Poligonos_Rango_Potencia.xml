@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <fields>OBJECT_ID</fields>
+    <titlefield>OBJECT_ID</titlefield>
+  <!--    <links>
+    	<linkfield icon_or_text_or_img="text" icon="" linkalias="" linkprefix="" linksuffix="">address</linkfield>
+    </links> -->
+    <layername>Poligonos SSEE</layername>
+    <datefields></datefields> <!-- field in milliseconds -->
+    <zoomscale>5000</zoomscale>
+    <csvseparator>,</csvseparator>
+    <labels>
+    	<csvdefaultname>Related Records</csvdefaultname>
+		<exportbtnlabel>Export...</exportbtnlabel>
+		<export2csvoptionlabel>Export to CSV...</export2csvoptionlabel>
+		<export2txtoptionlabel>Export to Txt...</export2txtoptionlabel>
+    </labels>
+</configuration>
